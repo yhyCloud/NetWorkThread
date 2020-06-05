@@ -20,8 +20,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 import okhttp3.Call;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
@@ -30,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     private Button showTip;
     private Button BuildThread;
     private Button openWebPage;
+    private Button upload;
     private Thread thread;
     private ProgressBar mProgressBar;
     private HttpAsyncTask asyncTask;
@@ -42,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
         showTip = findViewById(R.id.buttonShowTip);
         BuildThread = findViewById(R.id.buttonStartThread);
         openWebPage = findViewById(R.id.buttonWebPage);
+        upload = findViewById(R.id.ButtonUpload);
 
         mProgressBar = findViewById(R.id.progressBar);
         mImageViews[0] = findViewById(R.id.imageView1);
@@ -98,6 +102,43 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        upload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                uploadOneFile();
+            }
+        });
+
+
+    }
+
+    private void uploadOneFile() {
+        Thread thread=new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String msg = null;
+                try {
+                    //在模拟器上localhost就是本机
+                    String url = "http://10.0.2.2:8080";
+                    MultipartBody.Builder builder = new MultipartBody.Builder();
+                    builder.setType(MultipartBody.FORM);
+                    builder.addFormDataPart("userYHY", "xxxx");
+                    InputStream is = getResources().openRawResource(R.raw.panda1);
+                    byte[] imData = new byte[is.available()];
+                    is.read(imData);
+                    RequestBody rb = RequestBody.create(null, imData);
+                    builder.addFormDataPart("file", "panda1.jpg", rb);
+                    RequestBody body = builder.build();
+                    OkHttpClient client = new OkHttpClient();
+                    Request request = new Request.Builder().url(url).post(body).build();
+                    client.newCall(request).execute();
+
+                } catch (Exception e) {
+                    msg = e.getLocalizedMessage();
+                }
+            }
+        });
+        thread.start();
 
     }
 
@@ -119,6 +160,7 @@ public class MainActivity extends AppCompatActivity {
         //该方法可以进行耗时操作
         protected Bitmap[] doInBackground(String... strings) {
             Bitmap[] bitmaps = new Bitmap[strings.length];
+
             OkHttpClient client = new OkHttpClient();
             for (int i = 0; i < strings.length; i++) {
                 if (isCancelled()) {
@@ -141,8 +183,9 @@ public class MainActivity extends AppCompatActivity {
             }
             return bitmaps;
 
-            /**
-            for (int i=0; i<strings.length;i++) {
+
+
+/*            for (int i=0; i<strings.length;i++) {
                 try {
                     URL urlobj = new URL(strings[i]);
                     HttpURLConnection connection = (HttpURLConnection) urlobj.openConnection();
@@ -160,8 +203,8 @@ public class MainActivity extends AppCompatActivity {
                     return null;
                 }
             }
-            return bitmaps;
-             **/
+            return bitmaps;*/
+
         }
 
         @Override
