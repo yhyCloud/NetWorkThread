@@ -19,6 +19,12 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import okhttp3.Call;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
+
 public class MainActivity extends AppCompatActivity {
 
     private Button showTip;
@@ -26,15 +32,16 @@ public class MainActivity extends AppCompatActivity {
     private Button openWebPage;
     private Thread thread;
     private ProgressBar mProgressBar;
+    private HttpAsyncTask asyncTask;
     private ImageView[] mImageViews = new ImageView[9];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Button showTip = findViewById(R.id.buttonShowTip);
-        Button BuildThread = findViewById(R.id.buttonStartThread);
-        Button openWebPage = findViewById(R.id.buttonWebPage);
+        showTip = findViewById(R.id.buttonShowTip);
+        BuildThread = findViewById(R.id.buttonStartThread);
+        openWebPage = findViewById(R.id.buttonWebPage);
 
         mProgressBar = findViewById(R.id.progressBar);
         mImageViews[0] = findViewById(R.id.imageView1);
@@ -69,13 +76,12 @@ public class MainActivity extends AppCompatActivity {
                 });
                 thread.start();
             }
-
         });
 
         openWebPage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                HttpAsyncTask asyncTask = new HttpAsyncTask(9);
+                asyncTask = new HttpAsyncTask(9);
                 Log.i("Main","创建异步任务");
                 asyncTask.execute(
                         "http://www.tucoo.com/photo/water_02/s/water_05102s.jpg",
@@ -92,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
     }
 
     class HttpAsyncTask  extends AsyncTask<String,Integer, Bitmap[]> {
@@ -101,9 +108,6 @@ public class MainActivity extends AppCompatActivity {
             this.taskNum = taskNum;
         }
 
-        public HttpAsyncTask() {
-
-        }
 
         @Override
         protected void onPreExecute() {
@@ -115,6 +119,29 @@ public class MainActivity extends AppCompatActivity {
         //该方法可以进行耗时操作
         protected Bitmap[] doInBackground(String... strings) {
             Bitmap[] bitmaps = new Bitmap[strings.length];
+            OkHttpClient client = new OkHttpClient();
+            for (int i = 0; i < strings.length; i++) {
+                if (isCancelled()) {
+                    break;
+                }
+                try {
+                    Request.Builder builder = new Request.Builder();
+                    builder.url(strings[i]);//设置请求地址
+                    Request request = builder.build();//设置请求对象
+                    Call call = client.newCall(request);
+                    Response response = call.execute();
+                    ResponseBody body = response.body();
+                    InputStream inputStream = body.byteStream();
+                    Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                    bitmaps[i] = bitmap;
+                    publishProgress(i + 1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return bitmaps;
+
+            /**
             for (int i=0; i<strings.length;i++) {
                 try {
                     URL urlobj = new URL(strings[i]);
@@ -134,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             return bitmaps;
+             **/
         }
 
         @Override
@@ -153,4 +181,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        if (asyncTask != null) {//表示如果当前异步任务在执行，就不要强制停止
+            asyncTask.cancel(false);
+        }
+        super.onDestroy();
+    }
 }
